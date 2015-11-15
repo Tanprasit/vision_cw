@@ -1,5 +1,3 @@
-import javax.xml.ws.soap.MTOM;
-
 public class GaussianFilter {
 
 
@@ -14,63 +12,90 @@ public class GaussianFilter {
 //          apply 1D coefficients in vertical axis
 
     public static Image blur(Image inputImage, int sigma) {
-        Image outputImage = new Image(0, inputImage.width, inputImage.height);
 
-        for (int x = 0; x < inputImage.width; x++) {
-            for (int y = 0; y < inputImage.height; y++ ) {
-                outputImage.pixels[x][y] = getAverageIntensity(x, y, inputImage, sigma);
+        double[] xConvolution = getConvolution(sigma);
+        double[] yConvolution = getConvolution(sigma);
+
+        Image xConvolutedImage = getHorizontalConvolution(inputImage, xConvolution);
+        Image yConvolutedImage = getVerticalConvolution(inputImage, yConvolution);
+
+        return combineConvolution(xConvolutedImage, yConvolutedImage);
+    }
+
+    private static Image combineConvolution(Image xConvolutedImage, Image yConvolutedImage) {
+
+        for (int y = 0; y < xConvolutedImage.height; y++) {
+            for (int x = 0; x < xConvolutedImage.width; x++) {
+                xConvolutedImage.pixels[x][y] = xConvolutedImage.pixels[x][y] + yConvolutedImage.pixels[x][y];
             }
         }
 
+        return xConvolutedImage;
+    }
+
+    private static Image getVerticalConvolution(Image inputImage, double[] yConvolution) {
+        Image outputImage = new Image(0, inputImage.width, inputImage.height);
+
+        for (int y = 0; y < inputImage.height; y++) {
+            for (int x = 0; x < inputImage.width; x++) {
+                int total = 0;
+                for (int z = 0; z < yConvolution.length; z++) {
+                    int yPixel = y + z - (yConvolution.length /2);
+
+                    if (yPixel < 0) {
+                        yPixel = 0;
+                    }
+
+                    total += yConvolution[z] * inputImage.pixels[x][yPixel];
+                }
+                outputImage.pixels[x][y] = total;
+            }
+        }
         return outputImage;
     }
 
-    private static int getAverageIntensity(int row, int column, Image inputImage, int sigma) {
-        int kernelSize = (6 * sigma) + 1;
+    private static Image getHorizontalConvolution(Image inputImage, double[] xConvolution) {
 
-        int[][] imagePixels = getImagePixels( row, column, inputImage, kernelSize, sigma);
+        Image outputImage = new Image(0, inputImage.width, inputImage.height);
 
-        int total = 0;
+        for (int y = 0; y < inputImage.height; y++) {
+            for (int x = 0; x < inputImage.width; x++) {
+                int total = 0;
+                for (int z = 0; z < xConvolution.length; z++) {
+                    int xPixel = x + z - (xConvolution.length /2);
 
-        for (int y = 0; y < kernelSize; y++)
-            for (int x = 0; x < kernelSize; x++)
-//                total +=  (1 / Math.sqrt(2 * Math.PI * sigma)) * (d1Gaussian(x, sigma) * d1Gaussian(y, sigma)) ;
-                total += imagePixels[x][y];
+                    if (xPixel < 0)
+                        xPixel = 0;
 
-        return total;
-    }
-
-    private static int[][] getImagePixels(int row, int column, Image inputImage, int kernelSize, int sigma) {
-
-        int[][] kernel = new int[kernelSize][kernelSize];
-
-        for (int x = 0; x < kernelSize; x++) {
-            int xPixel = clamp(row - kernelSize/2 + x, 0, inputImage.width);
-            int relativeX = x - kernelSize/2;
-            for (int y = 0; y < kernelSize; y++) {
-                int yPixel = clamp(column -   kernelSize/2 + y, 0, inputImage.height);
-                int relativeY = y - kernelSize/2;
-                kernel[x][y] =  (int) (clamp(inputImage.pixels[xPixel][yPixel], 0, 255) * asd(sigma, relativeX,relativeY ));
+                    total += xConvolution[z] * inputImage.pixels[xPixel][y];
+                }
+                outputImage.pixels[x][y] = total;
             }
         }
-
-        return kernel;
+        return outputImage;
     }
 
-    private static double d1Gaussian(int coordinate, int sigma) {
-        return (Math.exp(Math.pow(coordinate, 2) / Math.pow(2 * sigma, 2)));
+    private static double[] getConvolution(int sigma) {
+        int kernelSize = (6 * sigma) + 1;
+        int relativeKernelSize = kernelSize / 2;
+
+        double[] xConvolution = new double[kernelSize];
+        double sum = 0.0;
+
+        for (int x = -relativeKernelSize; x <= relativeKernelSize; x++) {
+            xConvolution[x + relativeKernelSize] = d1Gaussian(sigma, x);
+            sum += xConvolution[x + relativeKernelSize];
+        }
+
+        for (int index = 0; index < xConvolution.length; index++) {
+            xConvolution[index] /= sum * 0.5;
+        }
+
+        return xConvolution;
     }
 
-    private static int clamp(int value, int min, int max) {
-        if (value > max) value = max;
-        if (value < min) value = min;
-        return value;
-    }
-
-    private static double asd(int sigma, int x, int y) {
-        double lhs = 1 / (2 * Math.PI * Math.pow(sigma, 2));
-        double rhs = Math.exp(-(x * x + y * y) / (2 * sigma * sigma));
-        return lhs * rhs;
+    private static double d1Gaussian(int sigma, int coordinate) {
+        return (1.0 / (Math.sqrt(2.0 * Math.PI) * sigma)) *  Math.exp(-coordinate * coordinate / (2.0 * sigma * sigma));
     }
 
 }

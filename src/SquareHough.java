@@ -25,23 +25,28 @@ public class SquareHough {
     private static void DoG(Image image) {
         Image image1 = GaussianFilter.blur(image, 1);
         Image image2 = GaussianFilter.blur(image, 2);
-//        image2.WritePGM("dog2.pgm");
-//        image1.WritePGM("dog1.pgm");
-
+        image1.WritePGM("dog1.pgm");
+        image2.WritePGM("dog2.pgm");
+//
         Image imagePGM = takeAway(image1, image2);
-
+//
         imagePGM.WritePGM("DoG.pgm");
 
-        houghTransform(imagePGM);
+//        houghTransform(imagePGM);
     }
 
     private static Image takeAway(Image im1, Image im2) {
-        Image outputImage = im1;
+        Image outputImage = new Image(0, im1.width, im1.height);
 
         // Iterate over every pixel. Start at 1 and end at -1 to prevent array out of bounds.
-        for (int y = 1; y < im1.height - 1; y++) {
-            for (int x = 1; x < im1.width - 1; x++) {
-                outputImage.pixels[x][y] = im1.pixels[x][y] - im2.pixels[x][y];
+        for (int y = 0; y < im1.height; y++) {
+            for (int x = 0; x < im1.width; x++) {
+                int value = im2.pixels[x][y] - im1.pixels[x][y];
+
+                if (value < 0)
+                    value = 0;
+
+                outputImage.pixels[x][y] = value;
             }
         }
 
@@ -72,6 +77,12 @@ public class SquareHough {
         }
 
         imagePPM.WritePPM("houghLines.ppm");
+    }
+
+    private static int clamp(int value, int min, int max) {
+        if (value > max) value = max;
+        if (value < min) value = min;
+        return value;
     }
 
 }
