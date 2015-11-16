@@ -13,48 +13,14 @@ public class GaussianFilter {
 
     public static Image blur(Image inputImage, int sigma) {
 
-        double[] xConvolution = getConvolution(sigma);
-        double[] yConvolution = getConvolution(sigma);
+        double[] xKernel = generateGaussianKernel(sigma);
+        double[] yKernel = generateGaussianKernel(sigma);
 
-        Image xConvolutedImage = getHorizontalConvolution(inputImage, xConvolution);
-        Image yConvolutedImage = getVerticalConvolution(inputImage, yConvolution);
-
-        return combineConvolution(xConvolutedImage, yConvolutedImage);
+        Image horizontalConvolutedImage = applyHorizontalConvolution(inputImage, xKernel);
+        return applyVerticalConvolution(horizontalConvolutedImage, yKernel);
     }
 
-    private static Image combineConvolution(Image xConvolutedImage, Image yConvolutedImage) {
-
-        for (int y = 0; y < xConvolutedImage.height; y++) {
-            for (int x = 0; x < xConvolutedImage.width; x++) {
-                xConvolutedImage.pixels[x][y] = xConvolutedImage.pixels[x][y] + yConvolutedImage.pixels[x][y];
-            }
-        }
-
-        return xConvolutedImage;
-    }
-
-    private static Image getVerticalConvolution(Image inputImage, double[] yConvolution) {
-        Image outputImage = new Image(0, inputImage.width, inputImage.height);
-
-        for (int y = 0; y < inputImage.height; y++) {
-            for (int x = 0; x < inputImage.width; x++) {
-                int total = 0;
-                for (int z = 0; z < yConvolution.length; z++) {
-                    int yPixel = y + z - (yConvolution.length /2);
-
-                    if (yPixel < 0) {
-                        yPixel = 0;
-                    }
-
-                    total += yConvolution[z] * inputImage.pixels[x][yPixel];
-                }
-                outputImage.pixels[x][y] = total;
-            }
-        }
-        return outputImage;
-    }
-
-    private static Image getHorizontalConvolution(Image inputImage, double[] xConvolution) {
+    private static Image applyHorizontalConvolution(Image inputImage, double[] xConvolution) {
 
         Image outputImage = new Image(0, inputImage.width, inputImage.height);
 
@@ -66,6 +32,9 @@ public class GaussianFilter {
 
                     if (xPixel < 0)
                         xPixel = 0;
+                    else if (xPixel >= inputImage.width) {
+                        xPixel = inputImage.width - 1;
+                    }
 
                     total += xConvolution[z] * inputImage.pixels[xPixel][y];
                 }
@@ -75,27 +44,54 @@ public class GaussianFilter {
         return outputImage;
     }
 
-    private static double[] getConvolution(int sigma) {
+    private static Image applyVerticalConvolution(Image inputImage, double[] yConvolution) {
+        Image outputImage = new Image(0, inputImage.width, inputImage.height);
+
+        for (int y = 0; y < inputImage.height; y++) {
+            for (int x = 0; x < inputImage.width; x++) {
+                int total = 0;
+                for (int z = 0; z < yConvolution.length; z++) {
+                    int yPixel = y + z - (yConvolution.length /2);
+
+                    if (yPixel < 0) {
+                        yPixel = 0;
+                    } else if (yPixel >= inputImage.height) {
+                        yPixel = inputImage.height - 1;
+                    }
+
+                    total += yConvolution[z] * inputImage.pixels[x][yPixel];
+                }
+                outputImage.pixels[x][y] = total;
+            }
+        }
+        return outputImage;
+    }
+
+    private static double[] generateGaussianKernel(int sigma) {
         int kernelSize = (6 * sigma) + 1;
         int relativeKernelSize = kernelSize / 2;
 
         double[] xConvolution = new double[kernelSize];
         double sum = 0.0;
 
-        for (int x = -relativeKernelSize; x <= relativeKernelSize; x++) {
-            xConvolution[x + relativeKernelSize] = d1Gaussian(sigma, x);
-            sum += xConvolution[x + relativeKernelSize];
+        for (int x = 0; x < kernelSize; ++x) {
+            xConvolution[x] = d1Gaussian(sigma, x - relativeKernelSize);
         }
 
+        for (double value : xConvolution)
+                sum += value;
+
+        // Weight scaling
         for (int index = 0; index < xConvolution.length; index++) {
-            xConvolution[index] /= sum * 0.5;
+            xConvolution[index] /= sum * 0.49;
         }
 
         return xConvolution;
     }
 
-    private static double d1Gaussian(int sigma, int coordinate) {
-        return (1.0 / (Math.sqrt(2.0 * Math.PI) * sigma)) *  Math.exp(-coordinate * coordinate / (2.0 * sigma * sigma));
+    private static double d1Gaussian(double sigma, double x) {
+        double c = 2.0 * sigma * sigma;
+        return Math.exp(-x * x / c) / Math.sqrt(c * Math.PI);
     }
 
 }

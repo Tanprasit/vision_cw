@@ -82,7 +82,7 @@ public class HoughTransform {
         for (int x = 0; x < image.width; x++) {
             for (int y = 0; y < image.height; y++) {
                 // Find non-black, pixels 255 == white 0 == black
-                if (image.pixels[x][y] < 0) {
+                if (image.pixels[x][y] != 0) {
                     addPoint(x, y);
                 }
             }
@@ -120,7 +120,7 @@ public class HoughTransform {
      *
      * @param threshold The percentage threshold above which lines are determined from the hough array
      */
-    public Vector<HoughLine> getLines(int threshold) {
+    public Vector<HoughLine> getLines(double threshold) {
 
         // Initialise the vector of lines that we'll return
         Vector<HoughLine> lines = new Vector<HoughLine>(20);
@@ -134,7 +134,7 @@ public class HoughTransform {
             for (int r = neighbourhoodSize; r < doubleHeight - neighbourhoodSize; r++) {
 
                 // Only consider points above threshold
-                if (houghArray[t][r] > threshold) {
+                if (houghArray[t][r] > threshold * getHighestValue()) {
 
                     int peak = houghArray[t][r];
 
@@ -189,6 +189,11 @@ public class HoughTransform {
         for (int t = 0; t < maxTheta; t++) {
             for (int r = 0; r < doubleHeight; r++) {
                 double value = 255 * ((double) houghArray[t][r]) / max;
+
+                if (r == doubleHeight/2) {
+                    value = 0;
+                }
+
                 image.pixels[r][t] = (int) value;
             }
         }

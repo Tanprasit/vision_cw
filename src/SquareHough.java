@@ -4,35 +4,36 @@ import java.util.Vector;
 
 public class SquareHough {
 
+    // im1-s200.pgm 200 90 0.25 0.75 0.75 L
+
+    private static double f1;
+    private static double f2;
+    private static double f3;
+
     public SquareHough() {
     }
 
     public static void main(String[] args) {
-//        Image image = new Image();
-//        image.ReadPGM(args[0]);
-//        int sqrLength = Integer.getInteger(args[1]);
-//        int chgToTheta = Integer.getInteger(args[2]);
-//        int f1 = Integer.getInteger(args[3]);
-//        int f2 = Integer.getInteger(args[4]);
-//        int f3 = Integer.getInteger(args[5]);
-
-        String fileNameIn = "./images/im1-s200.pgm";
         Image image = new Image();
-        image.ReadPGM(fileNameIn);
+        image.ReadPGM(args[0]);
+        int sqrLength = Integer.parseInt(args[1]);
+        int chgToTheta = Integer.parseInt(args[2]);
+        f1 = Double.parseDouble(args[3]);
+        f2 = Double.parseDouble(args[4]);
+        f3 = Double.parseDouble(args[5]);
+
         DoG(image);
     }
 
     private static void DoG(Image image) {
         Image image1 = GaussianFilter.blur(image, 1);
         Image image2 = GaussianFilter.blur(image, 2);
-        image1.WritePGM("dog1.pgm");
-        image2.WritePGM("dog2.pgm");
-//
+
         Image imagePGM = takeAway(image1, image2);
-//
+
         imagePGM.WritePGM("DoG.pgm");
 
-//        houghTransform(imagePGM);
+        houghTransform(imagePGM, image);
     }
 
     private static Image takeAway(Image im1, Image im2) {
@@ -53,7 +54,8 @@ public class SquareHough {
         return outputImage;
     }
 
-    private static void houghTransform(Image imagePGM) {
+    private static void houghTransform(Image imagePGM, Image originalImage) {
+
         // create a hough transform object with the right dimensions
         HoughTransform h = new HoughTransform(imagePGM);
 
@@ -63,12 +65,12 @@ public class SquareHough {
         // Accumulator
         Image im = h.getHoughArrayImage();
 
-        im.WritePGM("houghSpace.pgm");
+        im.WritePGM("accumulator.pgm");
 
-        ImagePPM imagePPM = ImagePPM.PGMToPPM(imagePGM);
+        ImagePPM imagePPM = ImagePPM.PGMToPPM(originalImage);
 
         // get the lines out
-        Vector<HoughLine> lines = h.getLines(10);
+        Vector<HoughLine> lines = h.getLines(f1);
 
         // draw the lines back onto the image
         for (int j = 0; j < lines.size(); j++) {
@@ -76,7 +78,7 @@ public class SquareHough {
             line.draw(imagePPM, Color.GREEN.getRGB());
         }
 
-        imagePPM.WritePPM("houghLines.ppm");
+        imagePPM.WritePPM("lines.ppm");
     }
 
     private static int clamp(int value, int min, int max) {
