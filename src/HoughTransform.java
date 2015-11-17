@@ -5,7 +5,7 @@ import java.util.Vector;
 public class HoughTransform {
 
     // The size of the neighbourhood in which to search for other local maxima
-    final int neighbourhoodSize = 19;
+    final int neighbourhoodSize = 7;
 
     // How many discrete values of theta shall we check?
     final int maxTheta = 180;
@@ -81,7 +81,7 @@ public class HoughTransform {
         // Now find edge points and update the hough array
         for (int x = 0; x < image.width; x++) {
             for (int y = 0; y < image.height; y++) {
-                // Find non-black, pixels 255 == white 0 == black
+                // Find non-black, pixels 255 == white, 0 == black
                 if (image.pixels[x][y] != 0) {
                     addPoint(x, y);
                 }

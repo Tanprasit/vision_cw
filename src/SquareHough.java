@@ -1,37 +1,44 @@
 import java.awt.*;
-import java.io.IOException;
 import java.util.Vector;
 
 public class SquareHough {
 
     // im1-s200.pgm 200 90 0.25 0.75 0.75 L
+    // images/tshirt1-124.pgm 124 5 0.25 0.75 0.75 E
 
     private static double f1;
     private static double f2;
     private static double f3;
+    private static String method;
 
     public SquareHough() {
     }
 
     public static void main(String[] args) {
         Image image = new Image();
+
         image.ReadPGM(args[0]);
         int sqrLength = Integer.parseInt(args[1]);
         int chgToTheta = Integer.parseInt(args[2]);
         f1 = Double.parseDouble(args[3]);
         f2 = Double.parseDouble(args[4]);
         f3 = Double.parseDouble(args[5]);
+        method = args[6];
 
         DoG(image);
     }
 
     private static void DoG(Image image) {
-        Image image1 = GaussianFilter.blur(image, 1);
-        Image image2 = GaussianFilter.blur(image, 2);
+        Image image1 = GaussianFilter.blur(image, 1, method);
+        Image image2 = GaussianFilter.blur(image, 2, method);
 
         Image imagePGM = takeAway(image1, image2);
 
-        imagePGM.WritePGM("DoG.pgm");
+        if (method.equals("E")) {
+            imagePGM.WritePGM("SobelDoG.pgm");
+        } else {
+            imagePGM.WritePGM("DoG.pgm");
+        }
 
         houghTransform(imagePGM, image);
     }
@@ -80,11 +87,4 @@ public class SquareHough {
 
         imagePPM.WritePPM("lines.ppm");
     }
-
-    private static int clamp(int value, int min, int max) {
-        if (value > max) value = max;
-        if (value < min) value = min;
-        return value;
-    }
-
 }
