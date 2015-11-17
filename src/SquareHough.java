@@ -25,20 +25,42 @@ public class SquareHough {
         f3 = Double.parseDouble(args[5]);
         method = args[6];
 
-        DoG(image);
+        switch (method) {
+            case "L":
+                DoG(image);
+                break;
+            case "E":
+                Sobel(image);
+                break;
+            default:
+                DoG(image);
+        }
     }
 
+//    Image sobelImage = Sobel.applySobelKernel(inputImage);
+//    horizontalConvolutedImage = applyHorizontalConvolution(sobelImage, xKernel);
+//    outputImage = applyVerticalConvolution(horizontalConvolutedImage, yKernel);
+
     private static void DoG(Image image) {
-        Image image1 = GaussianFilter.blur(image, 1, method);
-        Image image2 = GaussianFilter.blur(image, 2, method);
+        Image image1 = GaussianFilter.blur(image, 1);
+        Image image2 = GaussianFilter.blur(image, 2);
 
         Image imagePGM = takeAway(image1, image2);
 
-        if (method.equals("E")) {
-            imagePGM.WritePGM("SobelDoG.pgm");
-        } else {
-            imagePGM.WritePGM("DoG.pgm");
-        }
+        imagePGM.WritePGM("DoG.pgm");
+
+        houghTransform(imagePGM, image);
+    }
+
+    private static void Sobel(Image image) {
+        Image sobelImage = Sobel.applySobelKernel(image);
+
+        Image image1 = GaussianFilter.blur(sobelImage, 1);
+        Image image2 = GaussianFilter.blur(sobelImage, 2);
+
+        Image imagePGM = takeAway(image1, image2);
+
+        imagePGM.WritePGM("SobelDoG.pgm");
 
         houghTransform(imagePGM, image);
     }

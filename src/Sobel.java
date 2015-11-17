@@ -23,6 +23,8 @@ public class Sobel {
 
                 int magnitude = Math.abs(xPixel) + (Math.abs(yPixel));
 
+
+                // added weighting factor.
                 magnitude = 255 - clamp(magnitude / 6, 0, 255);
                 outputImage.pixels[x][y] = magnitude;
             }

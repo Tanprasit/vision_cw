@@ -2,7 +2,6 @@ import java.util.Map;
 
 public class GaussianFilter {
 
-    private static String method;
 //    Pseudo code for applying Gaussian (or any separable filter):
 //
 //    calculate 1D Gaussian (or other separable filter) coefficients
@@ -13,36 +12,13 @@ public class GaussianFilter {
 //      for each col
 //          apply 1D coefficients in vertical axis
 
-    public static Image blur(Image inputImage, int sigma, String method) {
-
-        GaussianFilter.method = method;
+    public static Image blur(Image inputImage, int sigma) {
 
         double[] xKernel = generateGaussianKernel(sigma);
         double[] yKernel = generateGaussianKernel(sigma);
 
-        Image horizontalConvolutedImage;
-        Image outputImage;
-
-        switch (method) {
-            case "L":
-                horizontalConvolutedImage = applyHorizontalConvolution(inputImage, xKernel);
-                outputImage = applyVerticalConvolution(horizontalConvolutedImage, yKernel);
-                break;
-
-            case "E":
-                Image sobelImage = Sobel.applySobelKernel(inputImage);
-                horizontalConvolutedImage = applyHorizontalConvolution(sobelImage, xKernel);
-                outputImage = applyVerticalConvolution(horizontalConvolutedImage, yKernel);
-                break;
-
-            default:
-                horizontalConvolutedImage = applyHorizontalConvolution(inputImage, xKernel);
-                outputImage = applyVerticalConvolution(horizontalConvolutedImage, yKernel);
-                break;
-        }
-
-        return outputImage;
-
+        Image horizontalConvolutedImage = applyHorizontalConvolution(inputImage, xKernel);
+        return applyVerticalConvolution(horizontalConvolutedImage, yKernel);
     }
 
     private static Image applyHorizontalConvolution(Image inputImage, double[] xConvolution) {
@@ -108,11 +84,7 @@ public class GaussianFilter {
 
         // Weight and with scaling factor.
         for (int index = 0; index < xConvolution.length; index++) {
-            if (method.equals("E")) {
-                xConvolution[index] /= sum * 0.5;
-            } else {
-                xConvolution[index] /= sum * 0.5;
-            }
+            xConvolution[index] /= sum * 0.5;
         }
 
         return xConvolution;
