@@ -1,58 +1,46 @@
-import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.util.Vector;
+import java.util.*;
 
 public class HoughTransform {
 
-    // The size of the neighbourhood in which to search for other local maxima
-    final int neighbourhoodSize = 7;
+    private int maxTheta = 180;
 
-    // How many discrete values of theta shall we check?
-    final int maxTheta = 180;
-
-    // Using maxTheta, work out the step
-    final double thetaStep = Math.PI / maxTheta;
-
-    // the width and height of the image
-    protected int width, height;
-
-    // the hough array
-    protected int[][] houghArray;
+    // The size of the local window
+    final int windowSize = 19;
 
     // the coordinates of the centre of the image
-    protected float centerX, centerY;
+    private float centerX, centerY;
 
-    // the height of the hough array
-    protected int houghHeight;
+    // The accumulator for all possible r and thetas.
+    private int[][] accumulator;
+
+    // the max r of accumulator
+    private int houghWidth;
 
     // double the hough height (allows for negative numbers)
-    protected int doubleHeight;
+    private int doubleHoughWidth;
 
     // the number of points that have been added
-    protected int numPoints;
+    private int numPoints = 0;
+
+    private double stepSize = Math.PI / maxTheta;
 
     // cache of values of sin and cos for different theta values. Has a significant performance improvement.
-    private double[] sinCache;
-    private double[] cosCache;
+    private double[] sinTable;
+    private double[] cosTable;
 
     public HoughTransform(Image image) {
 
-        this.width = image.width;
-        this.height = image.height;
+        int width = image.width;
+        int height = image.height;
 
-        initialise();
-    }
-
-    public void initialise() {
-
-        // Calculate the maximum height the hough array needs to have
-        houghHeight = (int) (Math.sqrt(2) * Math.max(height, width)) / 2;
+        // Calculate the maximum r for all possible coordinate
+        houghWidth =  (int) Math.sqrt((height * height) + (width * width)) / 2;
 
         // Double the height of the hough array to cope with negative r values
-        doubleHeight = 2 * houghHeight;
+        doubleHoughWidth = 2 * houghWidth;
 
         // Create the hough array
-        houghArray = new int[maxTheta][doubleHeight];
+        accumulator = new int[maxTheta][doubleHoughWidth];
 
         // Find edge points and vote in array
         centerX = width / 2;
@@ -61,14 +49,13 @@ public class HoughTransform {
         // Count how many points there are
         numPoints = 0;
 
-        // cache the values of sin and cos for faster processing
-        sinCache = new double[maxTheta];
-        cosCache = sinCache.clone();
+        sinTable = new double[maxTheta];
+        cosTable = sinTable.clone();
 
-        for (int t = 0; t < maxTheta; t++) {
-            double realTheta = t * thetaStep;
-            sinCache[t] = Math.sin(realTheta);
-            cosCache[t] = Math.cos(realTheta);
+        for (int theta = 0; theta < maxTheta; theta++) {
+            double thetaRadians = theta * stepSize;
+            sinTable[theta] = Math.sin(thetaRadians);
+            cosTable[theta] = Math.cos(thetaRadians);
         }
     }
 
@@ -81,7 +68,7 @@ public class HoughTransform {
         // Now find edge points and update the hough array
         for (int x = 0; x < image.width; x++) {
             for (int y = 0; y < image.height; y++) {
-                // Find non-black, pixels 255 == white, 0 == black
+                // Find white pixels or anything that isn't black. 0 == black.
                 if (image.pixels[x][y] != 0) {
                     addPoint(x, y);
                 }
@@ -95,19 +82,19 @@ public class HoughTransform {
      */
     public void addPoint(int x, int y) {
 
-        // Go through each value of theta
+        // Go through each value of theta from -r to r
         for (int t = 0; t < maxTheta; t++) {
 
             //Work out the r values for each theta step
-            int r = (int) (((x - centerX) * cosCache[t]) + ((y - centerY) * sinCache[t]));
+            int rScaled = (int) (((x - centerX) * cosTable[t]) + ((y - centerY) * sinTable[t]));
 
             // this copes with negative values of r
-            r += houghHeight;
+            rScaled += houghWidth;
 
-            if (r < 0 || r >= doubleHeight) continue;
+            if (rScaled < 0 || rScaled >= doubleHoughWidth) continue;
 
             // Increment the hough array
-            houghArray[t][r]++;
+            accumulator[t][rScaled]++;
 
         }
 
@@ -120,32 +107,33 @@ public class HoughTransform {
      *
      * @param threshold The percentage threshold above which lines are determined from the hough array
      */
-    public Vector<HoughLine> getLines(double threshold) {
+    public ArrayList<HoughLine> getLines(double threshold) {
 
         // Initialise the vector of lines that we'll return
-        Vector<HoughLine> lines = new Vector<HoughLine>(20);
+        ArrayList<HoughLine> lines = new ArrayList<>();
 
-        // Only proceed if the hough array is not empty
+        // Break out if there are not points.
         if (numPoints == 0) return lines;
 
-        // Search for local peaks above threshold to draw
-        for (int t = 0; t < maxTheta; t++) {
+        // Search for local peaks above specified threshold.
+        for (int curTheta = 0; curTheta < maxTheta; curTheta++) {
             loop:
-            for (int r = neighbourhoodSize; r < doubleHeight - neighbourhoodSize; r++) {
+            for (int r = windowSize; r < doubleHoughWidth - windowSize; r++) {
 
                 // Only consider points above threshold
-                if (houghArray[t][r] > threshold * getHighestValue()) {
+                if (accumulator[curTheta][r] > threshold * getHighestValue()) {
 
-                    int peak = houghArray[t][r];
+                    //Is this point a local maxima (7x7)
+                    int peak = accumulator[curTheta][r];
 
                     // Check that this peak is indeed the local maxima
-                    for (int dx = -neighbourhoodSize; dx <= neighbourhoodSize; dx++) {
-                        for (int dy = -neighbourhoodSize; dy <= neighbourhoodSize; dy++) {
-                            int dt = t + dx;
+                    for (int dx = -windowSize; dx <= windowSize; dx++) {
+                        for (int dy = -windowSize; dy <= windowSize; dy++) {
+                            int dt = curTheta + dx;
                             int dr = r + dy;
                             if (dt < 0) dt = dt + maxTheta;
                             else if (dt >= maxTheta) dt = dt - maxTheta;
-                            if (houghArray[dt][dr] > peak) {
+                            if (accumulator[dt][dr] > peak) {
                                 // found a bigger point nearby, skip
                                 continue loop;
                             }
@@ -153,11 +141,10 @@ public class HoughTransform {
                     }
 
                     // calculate the true value of theta
-                    double theta = t * thetaStep;
+                    double theta = curTheta * stepSize;
 
                     // add the line to the vector
                     lines.add(new HoughLine(theta, r));
-
                 }
             }
         }
@@ -166,14 +153,14 @@ public class HoughTransform {
     }
 
     /**
-     * Gets the highest value in the hough array
+     * Gets the highest value in the accumulator.
      */
     public int getHighestValue() {
         int max = 0;
-        for (int t = 0; t < maxTheta; t++) {
-            for (int r = 0; r < doubleHeight; r++) {
-                if (houghArray[t][r] > max) {
-                    max = houghArray[t][r];
+        for (int currTheta = 0; currTheta < maxTheta; currTheta++) {
+            for (int r = 0; r < doubleHoughWidth; r++) {
+                if (accumulator[currTheta][r] > max) {
+                    max = accumulator[currTheta][r];
                 }
             }
         }
@@ -185,16 +172,17 @@ public class HoughTransform {
      */
     public Image getHoughArrayImage() {
         int max = getHighestValue();
-        Image image = new Image(0, doubleHeight, maxTheta);
-        for (int t = 0; t < maxTheta; t++) {
-            for (int r = 0; r < doubleHeight; r++) {
-                double value = 255 * ((double) houghArray[t][r]) / max;
+        Image image = new Image(0, doubleHoughWidth, maxTheta);
+        for (int currTheta = 0; currTheta < maxTheta; currTheta++) {
+            for (int r = 0; r < doubleHoughWidth; r++) {
 
-                if (r == doubleHeight/2) {
-                    value = 0;
+                if (r == doubleHoughWidth / 2) {
+                    image.pixels[r][currTheta] =  0;
+                } else {
+                    image.pixels[r][currTheta] = accumulator[currTheta][r];
                 }
 
-                image.pixels[r][t] = (int) value;
+
             }
         }
         return image;

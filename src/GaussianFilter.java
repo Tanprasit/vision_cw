@@ -1,16 +1,4 @@
-import java.util.Map;
-
 public class GaussianFilter {
-
-//    Pseudo code for applying Gaussian (or any separable filter):
-//
-//    calculate 1D Gaussian (or other separable filter) coefficients
-//    for each row
-//      for each col
-//          apply 1D coefficients in horizontal axis
-//    for each row
-//      for each col
-//          apply 1D coefficients in vertical axis
 
     public static Image blur(Image inputImage, int sigma) {
 
@@ -31,11 +19,7 @@ public class GaussianFilter {
                 for (int z = 0; z < xConvolution.length; z++) {
                     int xPixel = x + z - (xConvolution.length / 2);
 
-                    if (xPixel < 0)
-                        xPixel = 0;
-                    else if (xPixel >= inputImage.width) {
-                        xPixel = inputImage.width - 1;
-                    }
+                    xPixel = clamp(xPixel, 0, inputImage.width - 1);
 
                     total += xConvolution[z] * inputImage.pixels[xPixel][y];
                 }
@@ -54,11 +38,7 @@ public class GaussianFilter {
                 for (int z = 0; z < yConvolution.length; z++) {
                     int yPixel = y + z - (yConvolution.length / 2);
 
-                    if (yPixel < 0) {
-                        yPixel = 0;
-                    } else if (yPixel >= inputImage.height) {
-                        yPixel = inputImage.height - 1;
-                    }
+                    yPixel = clamp(yPixel, 0, inputImage.height - 1);
 
                     total += yConvolution[z] * inputImage.pixels[x][yPixel];
                 }
@@ -84,7 +64,7 @@ public class GaussianFilter {
 
         // Weight and with scaling factor.
         for (int index = 0; index < xConvolution.length; index++) {
-            xConvolution[index] /= sum * 0.5;
+            xConvolution[index] /= (sum * 0.5);
         }
 
         return xConvolution;
@@ -93,6 +73,12 @@ public class GaussianFilter {
     private static double d1Gaussian(double sigma, double x) {
         double c = 2.0 * sigma * sigma;
         return Math.exp(-x * x / c) / Math.sqrt(c * Math.PI);
+    }
+
+    private static int clamp(int value, int min, int max) {
+        if (value < min) value = min;
+        if (value > max) value = max;
+        return value;
     }
 }
 

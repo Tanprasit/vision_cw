@@ -1,4 +1,5 @@
 import java.awt.*;
+import java.util.ArrayList;
 import java.util.Vector;
 
 public class SquareHough {
@@ -6,6 +7,8 @@ public class SquareHough {
     // im1-s200.pgm 200 90 0.25 0.75 0.75 L
     // images/tshirt1-124.pgm 124 5 0.25 0.75 0.75 E
 
+    private static int sqrLength;
+    private static double changeOfTheta;
     private static double f1;
     private static double f2;
     private static double f3;
@@ -18,8 +21,8 @@ public class SquareHough {
         Image image = new Image();
 
         image.ReadPGM(args[0]);
-        int sqrLength = Integer.parseInt(args[1]);
-        int chgToTheta = Integer.parseInt(args[2]);
+        sqrLength = Integer.parseInt(args[1]);
+        changeOfTheta = Integer.parseInt(args[2]);
         f1 = Double.parseDouble(args[3]);
         f2 = Double.parseDouble(args[4]);
         f3 = Double.parseDouble(args[5]);
@@ -36,10 +39,6 @@ public class SquareHough {
                 DoG(image);
         }
     }
-
-//    Image sobelImage = Sobel.applySobelKernel(inputImage);
-//    horizontalConvolutedImage = applyHorizontalConvolution(sobelImage, xKernel);
-//    outputImage = applyVerticalConvolution(horizontalConvolutedImage, yKernel);
 
     private static void DoG(Image image) {
         Image image1 = GaussianFilter.blur(image, 1);
@@ -68,15 +67,12 @@ public class SquareHough {
     private static Image takeAway(Image im1, Image im2) {
         Image outputImage = new Image(0, im1.width, im1.height);
 
-        // Iterate over every pixel. Start at 1 and end at -1 to prevent array out of bounds.
+        // Iterate over every pixel. Start at 1  and end at -1 to prevent array out of bounds.
         for (int y = 0; y < im1.height; y++) {
             for (int x = 0; x < im1.width; x++) {
                 int value = im2.pixels[x][y] - im1.pixels[x][y];
 
-                if (value < 0)
-                    value = 0;
-
-                outputImage.pixels[x][y] = value;
+                outputImage.pixels[x][y] = clamp(value, 0, 255);
             }
         }
 
@@ -99,14 +95,22 @@ public class SquareHough {
         ImagePPM imagePPM = ImagePPM.PGMToPPM(originalImage);
 
         // get the lines out
-        Vector<HoughLine> lines = h.getLines(f1);
+        ArrayList<HoughLine> lines = h.getLines(f1);
 
-        // draw the lines back onto the image
+//         draw the lines back onto the image
         for (int j = 0; j < lines.size(); j++) {
-            HoughLine line = lines.elementAt(j);
-            line.draw(imagePPM, Color.GREEN.getRGB());
+            HoughLine line = lines.get(j);
+            line.draw(imagePPM, Color.GREEN.getRGB(), changeOfTheta);
         }
-
         imagePPM.WritePPM("lines.ppm");
+
+        SquareConstructor squareConstructor = new SquareConstructor(lines, sqrLength, changeOfTheta);
+        squareConstructor.drawCandidates(ImagePPM.PGMToPPM(originalImage));
+    }
+
+    private static int clamp(int value, int min, int max) {
+        if (value < min) value = min;
+        if (value > max) value = max;
+        return value;
     }
 }

@@ -1,13 +1,3 @@
-import java.awt.*;
-import java.awt.image.BufferedImage;
-
-/**
- * Represents a linear line as detected by the hough transform.
- * This line is represented by an angle theta and a radius from the centre.
- *
- * @author Olly Oechsle, University of Essex, Date: 13-Mar-2008
- * @version 1.0
- */
 public class HoughLine {
 
     protected double theta;
@@ -24,13 +14,13 @@ public class HoughLine {
     /**
      * Draws the line on the image of your choice with the RGB colour of your choice.
      */
-    public void draw(ImagePPM image, int color) {
+    public void draw(ImagePPM image, int color, double changeOfTheta) {
 
         int height = image.height;
         int width = image.width;
 
         // During processing h_h is doubled so that -ve r values
-        int houghHeight = (int) (Math.sqrt(2) * Math.max(height, width)) / 2;
+        int houghHeight = (int) Math.sqrt((height * height) + (width * width)) / 2;
 
         // Find edge points and vote in array
         float centerX = width / 2;
@@ -40,8 +30,11 @@ public class HoughLine {
         double tsin = Math.sin(theta);
         double tcos = Math.cos(theta);
 
-        if (theta < Math.PI * 0.25 || theta > Math.PI * 0.75) {
+        double changeOfThetaRad = Math.toRadians(changeOfTheta);
+
+        if (theta < changeOfThetaRad || theta > (changeOfThetaRad + Math.toRadians(90))) {
             // Draw vertical-ish lines
+
             for (int y = 0; y < height; y++) {
                 int x = (int) ((((r - houghHeight) - ((y - centerY) * tsin)) / tcos) + centerX);
                 if (x < width && x >= 0) {
